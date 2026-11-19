@@ -136,8 +136,6 @@ liquor_combo_fc <- liquor_cv_fit |>
 
 liquor_combo_fc |>
   accuracy(liquor, measures = list(RMSE = RMSE, MAE = MAE))
-
-liquor_combo_fc |> knitr::kable(digits = 2)
 ```
 
 The equal-weight combo yields an RMSE and MAE that tracks or slightly improves upon the best individual model, acting as a block against model specification error.
