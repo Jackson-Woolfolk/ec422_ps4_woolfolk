@@ -50,7 +50,7 @@ p_season <- liquor |>
   theme_minimal()
 print(p_season)
 ```
-
+The graphs shows the lowest point of sales to be around January, with a steady upward trend through most of the year, with the highest point of sales coming in December. The magnitude of the frequencies also grow, which could mean that creating a similar Retail Sales graph with log values could be helpful.
 
 ### 2.2 a.
 ```{r}
@@ -62,7 +62,6 @@ liquor_fit |> select(arima) |> report()
 liquor_fit |> select(ets) |> report()
 ```
 
-## Written answer
 ```{r}
 ### 2.2 b.
 liquor_fit |> select(arima) |> gg_tsresiduals()
@@ -89,7 +88,7 @@ liquor_cv_fit <- readRDS("results/liquor_cv_fit.rds")
 saveRDS(liquor_cv_fit, file = "results/liquor_cv_fit.rds")
 ```
 
-## How many different forecast origins will be considered in this TS-CV?
+With 336 total months in the sample, a 120-month initial training window, the cross-validation will evaluate 216 forecast origins.
   
 ### 2.3 b.
 ```{r}
@@ -97,10 +96,10 @@ liquor_cv_fc <- liquor_cv_fit |>
   forecast(h = 1)
 
 liquor_cv_fc |>
-  accuracy(liquor, measures = list(RMSE = RMSE, MAE = MAE))
+  accuracy(liquor, measures = list(RMSE = RMSE, MAE = MAE)) |> knitr::kable(digits = 2)
 ```
 
-## What are the dates of the first and last forecasts? Report the accuracy results in a table. In your write-up, you can produce a nicely formatted table by piping the results into the kable() function from the knitr package: add |> knitr::kable(digits = 2) to the end of the accuracy() code above. Which model forecasts most accurately? Do the two metrics agree?
+The first forecast is for January 2002, and the last forecast is for December 2019. Both RMSE and MAE support that ARIMA and ETS outperform the seasonal naive benchmark.
 
 ### 2.4
 ```{r}
@@ -125,7 +124,7 @@ dm_arima_snaive <- forecast::dm.test(liquor_errs$arima, liquor_errs$snaive, h = 
 dm_arima_snaive
 ```
 
-##Report both DM statistics and p-values. In two or three sentences: what do you conclude? If you were the liquor store chain, which model would you use?
+The Diebold-Mariano test comparing ARIMA and ETS yields a DM statistic of -2.91 with a p-value of 0.0040 indicates that ARIMA's accuracy is significantly better than ETS. We also see that the ARIMA model performs much better than the seasonal naive model which has a DM-stat of -10.755, worst of all the comparisons. 
 
 ## Part 3 
 
@@ -141,7 +140,7 @@ liquor_combo_fc |>
 liquor_combo_fc |> knitr::kable(digits = 2)
 ```
 
-##How does combo compare to each of the models that go into it?
+The equal-weight combo yields an RMSE and MAE that tracks or slightly improves upon the best individual model, acting as a block against model specification error.
 
 ### 3 b. 
 ```{r}
@@ -149,7 +148,7 @@ err_corr <- cor(liquor_errs$arima, liquor_errs$ets)
 err_corr
 ```
 
-##Based on this correlation, and on the DM test in 2.4, explain in two or three sentences why the combination did or did not beat the best individual model
+The forecast errors between ARIMA and ETS are very strongly correlated  because both models capture the exact same trend and seasonal patterns. Because similar models make correlated errors, averaging them won't reduce errors making the individual model better.
 
 ## Part 4
 
@@ -162,7 +161,6 @@ qd_raw <- read_csv("data/fredqd_2026-09.csv", show_col_types = FALSE) |>
 ### 4.1 b.
 ```{r}
 growth <- function(x) 100 * difference(log(x))
-
 qd <- qd_raw |>
   mutate(date = as.Date(sasdate, "%m/%d/%Y")) |>
   transmute(date,
@@ -188,8 +186,7 @@ N <- nrow(y)
 origins <- 120:(N - 1)
 actual <- y[121:N, ]
 ```
-
-### How many forecasts will we produce for each variable, and what are the dates of the first and last forecast?
+With 240 quarterly observations 1960 Q1 - 2019 Q4 and origins running from 120 to 239, we produce 120 forecasts for each variable. The first forecast is for March 1, 1990 or 1990 Q1 and the last forecast is for 2019 Q4 which is December 1, 2019.
   
 ### 4.2
 ```{r}
@@ -212,8 +209,7 @@ rmse_by_var <- function(f) sqrt(colMeans((actual - f)^2))
 rmse_by_var(fc_var1)
 rmse_by_var(fc_var4)
 ```
-
-## Which VAR forecasts better? For how many of the eight variables? Given that the VAR(4) contains the VAR(1) as a special case, why might the smaller model forecast better?
+The VAR(1) forecasts better for 7 out of the 8 variables, only inflation (infl) slightly favoring VAR(4). Even though VAR(4) nests VAR(1), estimating 264 parameters with OLS creates a lot of out-of-sample estimation variance, while the smaller VAR(1) avoids overfitting with a smaller sample.
 
 ## 4.3 a.
 ```{r}
@@ -254,10 +250,10 @@ var_results <- tibble(
 
 saveRDS(var_results, "results/var_results.rds")
 
-
+var_results <- readRDS("results/var_results.rds")
 var_results |> knitr::kable(digits = 3)
 ```
-##In your write-up, your .qmd can load this table with readRDS() 
+Compared to the OLS VAR(4), the BVAR(4) with lambda = 0.3 shrinks unstable higher-lag coefficients toward zero because of the Minnesota prior, lowering out-of-sample RMSE and performing competitively with the VAR(1). When lambda = 0.05 and the shrinking is compresses coefficients even harder, which can drive errors back up if too extreme. Finally, the best RMSE in the table is not a fair estimate because picking the best hyperparameter lambda based on test-set performance creates selection bias.
 
 ### 4.3 c.
 ```{r}
@@ -270,6 +266,7 @@ e_var4_infl <- actual[, col_idx] - fc_var4[, col_idx]
 e_bvar_infl <- actual[, col_idx] - fc_bvar_03[, col_idx]
 forecast::dm.test(e_var4_infl, e_bvar_infl, h = 1, power = 2)
 ```
+The DM tests comparing the VAR(4) to the BVAR(4) for GDP growth and inflation evaluate whether the differences in squared-error loss are significant at a 1-quarter horizon.
 
 ## Part 5
 
@@ -301,12 +298,14 @@ fm <- map2_dfc(md[names(tcode)], tcode, transform_series) |>
 fm <- fm[, colSums(is.na(fm)) == 0]
 
 dim(fm)
+```
 
 ### 5.1 c.
+```{r}
 tcode[c("INDPRO", "PAYEMS", "CPIAUCSL", "FEDFUNDS")]
 ```
 
-## In a sentence for each: how is each of these four series transformed? Why do you think the transformation chosen for FEDFUNDS differs from the one for INDPRO?
+INDPRO and PAYEMS use code 5 (monthly percentage growth rate, 100 * Delta * log(x)) to remove upward trends. CPIAUCSL uses code 6 (the change in monthly inflation, 100 * Delta^2 * log(x)) because price levels require differencing to become stationary. FEDFUNDS uses code 2 (simple first difference, Delta * x) rather than logs because interest rates are already measured in percentage units rather than growing unit levels.
 
 ### 5.2 a.
 ```{r}
@@ -317,7 +316,7 @@ pc <- prcomp(scale(Z))
 summary(pc)$importance[, 1:5]
 ```
 
-## What share of the variation in all 121 series do the first three factors explain? This should match the result we saw in class.
+The three principal components explain 29.5% of the total variation across all 121 series: PC1 = 15.0%, PC2 = 7.4%, PC3 = 7.1%.
 
 ### 5.2 b.
 ```{r}
@@ -336,7 +335,7 @@ sort(abs(cor(pc$x[, 1], Z))[1, ], decreasing = TRUE)[1:8]
 sort(abs(cor(pc$x[, 2], Z))[1, ], decreasing = TRUE)[1:8]
 ```
 
-## The names of the series can be looked up in the FRED-MD documentation, FRED-MD_updated_appendix.pdf, which is posted on Canvas. Based on these series, and on your plot, how would you describe what each factor captures?
+Based on the highest absolute correlations, Factor 1 captures broad economic activity and business cycle fluctuations, and its top series consist entirely of payroll employment and industrial production. Factor 2 captures aggregate price changes and inflation, its top series are mostly consumer price indices and PCE price deflators. 
 
 ### 5.3
 ```{r}
@@ -356,8 +355,7 @@ for (T in init:(n - 1)) {
 
 c(RMSE_AR = sqrt(mean(e_ar^2)), RMSE_FA = sqrt(mean(e_fa^2)))
 ```
-
-## Why would it be cheating to estimate the factors once, using the full sample, and use those in the horse race?
+The horse race yields an RMSE of 0.617 for the AR(1) and 0.589 for the factor-augmented model, confirming the class result. Estimating factors once on the full 1960–2019 sample would create data leakage and allow for information that should be unavailable at the time.
 
 ### 5.4
 ```{r}
@@ -388,5 +386,6 @@ direct_race <- function(series, h = 12, r = 3) {
 
 direct_race("CPIAUCSL")
 ```
+Yes, adding the factors improves the 12-month CPI inflation forecast, reducing the RMSE from 2.108 to 1.894 which is significant becuase of a p-value less than 0.001.
 
-## Do the factors improve the forecast of 12-month CPI inflation? By what percentage do they reduce the RMSE? Is the difference statistically significant?
+

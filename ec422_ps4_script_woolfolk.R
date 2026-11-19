@@ -75,7 +75,9 @@ liquor_cv_fit <- liquor_cv |>
         ets    = ETS(log(sales)),
         arima  = ARIMA(log(sales)))
 
-saveRDS(liquor_cv_fit, "results/liquor_cv_fit.rds")
+#saveRDS(liquor_cv_fit, "results/liquor_cv_fit.rds")
+liquor_cv_fit <- readRDS("results/liquor_cv_fit.rds")
+saveRDS(liquor_cv_fit, file = "results/liquor_cv_fit.rds")
 
 ## How many different forecast origins will be considered in this TS-CV?
   
@@ -338,13 +340,4 @@ direct_race <- function(series, h = 12, r = 3) {
 direct_race("CPIAUCSL")
 
 ## Do the factors improve the forecast of 12-month CPI inflation? By what percentage do they reduce the RMSE? Is the difference statistically significant?
-
-
-
-
-
-
-
-
-
 
