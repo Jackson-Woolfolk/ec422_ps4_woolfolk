@@ -7,9 +7,7 @@ library(tidyverse)
 library(fpp3)
 library(BVAR)
 
-## 2.1
-
-### a.
+### 2.1 a.
 liquor_raw <- read_csv(
   "data/MRTSSM4453USN.csv",
   na = ".",
@@ -26,7 +24,7 @@ liquor <- liquor_raw |>
 
 has_gaps(liquor)
 
-### b.
+### 2.1 b.
 p_sales <- liquor |> autoplot(sales) + labs(
     title = "U.S. Beer, Wine, and Liquor Retail Sales",
     subtitle = "Not seasonally adjusted, millions of dollars",
@@ -49,8 +47,7 @@ print(p_season)
 
 ## written answer
 
-### 2.2
-### a.
+### 2.2 a.
 liquor_fit <- liquor |>
   model(arima = ARIMA(log(sales)),
         ets   = ETS(log(sales)))
@@ -60,7 +57,7 @@ liquor_fit |> select(ets) |> report()
 
 ## Written answer
 
-### b.
+### 2.2 b.
 liquor_fit |> select(arima) |> gg_tsresiduals()
 
 liquor_fit |>
@@ -68,8 +65,7 @@ liquor_fit |>
   augment() |> 
   features(.innov, ljung_box, lag = 24, dof = 4)
 
-### 2.3
-### a.
+### 2.3 a.
 liquor_cv <- liquor |>
   stretch_tsibble(.init = 120, .step = 1) |>
   filter(.id < max(.id))
@@ -83,7 +79,7 @@ saveRDS(liquor_cv_fit, "results/liquor_cv_fit.rds")
 
 ## How many different forecast origins will be considered in this TS-CV?
   
-### b.
+### 2.3 b.
 liquor_cv_fc <- liquor_cv_fit |>
   forecast(h = 1)
 
@@ -114,8 +110,9 @@ dm_arima_snaive
 
 ##Report both DM statistics and p-values. In two or three sentences: what do you conclude? If you were the liquor store chain, which model would you use?
 
-## Part 3
-### a. 
+## Part 3 
+
+### 3 a. 
 liquor_combo_fc <- liquor_cv_fit |>
   mutate(combo = (arima + ets) / 2) |>
   forecast(h = 1)
@@ -127,13 +124,13 @@ liquor_combo_fc |> knitr::kable(digits = 2)
 
 ##How does combo compare to each of the models that go into it?
 
-### b. 
+### 3 b. 
 err_corr <- cor(liquor_errs$arima, liquor_errs$ets)
 err_corr
 ##Based on this correlation, and on the DM test in 2.4, explain in two or three sentences why the combination did or did not beat the best individual model
 
-
 ## Part 4
+
 ### 4.1 a.
 qd_raw <- read_csv("data/fredqd_2026-09.csv", show_col_types = FALSE) |>
   slice(-(1:2))
@@ -212,6 +209,7 @@ saveRDS(fc_bvar_03, "results/fc_bvar_03.rds")
 ## 4.3 b.
 set.seed(422)
 fc_bvar_005 <- bvar_cv(0.05)
+saveRDS(fc_bvar_005, "results/fc_bvar_005.rds")
 
 var_results <- tibble(
   Variable = colnames(y),
@@ -229,10 +227,15 @@ var_results |> knitr::kable(digits = 3)
 ### 4.3 c.
 e_var4 <- actual[, "gdp"] - fc_var4[, 1]
 e_bvar <- actual[, "gdp"] - fc_bvar_03[, 1]
-
 forecast::dm.test(e_var4, e_bvar, h = 1, power = 2)
 
+col_idx <- which(colnames(y) == "infl")
+e_var4_infl <- actual[, col_idx] - fc_var4[, col_idx]
+e_bvar_infl <- actual[, col_idx] - fc_bvar_03[, col_idx]
+forecast::dm.test(e_var4_infl, e_bvar_infl, h = 1, power = 2)
+
 ## Part 5
+
 ### 5.1 a.
 md_raw <- read_csv("data/fredmd_2026-09.csv", show_col_types = FALSE)
 tcode <- unlist(md_raw[1, -1])
