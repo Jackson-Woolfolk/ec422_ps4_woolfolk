@@ -67,3 +67,48 @@ liquor_fit |>
   select(arima) |>
   augment() |> 
   features(.innov, ljung_box, lag = 24, dof = 4)
+
+### 2.3
+### a.
+liquor_cv <- liquor |>
+  stretch_tsibble(.init = 120, .step = 1) |>
+  filter(.id < max(.id))
+
+liquor_cv_fit <- liquor_cv |>
+  model(snaive = SNAIVE(sales),
+        ets    = ETS(log(sales)),
+        arima  = ARIMA(log(sales)))
+
+saveRDS(liquor_cv_fit, "results/liquor_cv_fit.rds")
+
+How many different forecast origins will be considered in this TS-CV?
+  
+### b.
+liquor_cv_fc <- liquor_cv_fit |>
+  forecast(h = 1)
+
+liquor_cv_fc |>
+  accuracy(liquor, measures = list(RMSE = RMSE, MAE = MAE))
+
+## What are the dates of the first and last forecasts? Report the accuracy results in a table. In your write-up, you can produce a nicely formatted table by piping the results into the kable() function from the knitr package: add |> knitr::kable(digits = 2) to the end of the accuracy() code above. Which model forecasts most accurately? Do the two metrics agree?
+
+### 2.4
+
+liquor_errs <- liquor_cv_fc |>
+  as_tibble() |>
+  left_join(as_tibble(liquor) |> select(Month, actual = sales),
+            by = "Month") |>
+  mutate(e = actual - .mean) |>
+  select(Month, .model, e) |>
+  pivot_wider(names_from = .model, values_from = e)
+
+forecast::dm.test(liquor_errs$arima, liquor_errs$ets, h = 1, power = 2)
+
+### Arima v ETS
+dm_arima_ets <- forecast::dm.test(liquor_errs$arima, liquor_errs$ets, h = 1, power = 2)
+dm_arima_ets
+ 
+### Arima v Snaive
+dm_arima_snaive <- forecast::dm.test(liquor_errs$arima, liquor_errs$snaive, h = 1, power = 2)
+dm_arima_snaive
+  
